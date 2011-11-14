@@ -14,7 +14,7 @@ namespace MPQBrowser
 {
     class PropertyBrowser : TreeView
     {
-        static readonly HashSet<Type> BuiltInTypes = new HashSet<Type> { typeof(object), typeof(string), typeof(int), typeof(byte), typeof(decimal), typeof(float), typeof(double), typeof(bool), typeof(sbyte), typeof(char), typeof(uint), typeof(double), typeof(long), typeof(ulong), typeof(short), typeof(ushort) };
+        static readonly HashSet<Type> BuiltInTypes = new HashSet<Type> {typeof(object), typeof(string), typeof(int), typeof(byte), typeof(decimal), typeof(float), typeof(double), typeof(bool), typeof(sbyte), typeof(char), typeof(uint), typeof(double), typeof(long), typeof(ulong), typeof(short), typeof(ushort) };
 
         public delegate void OnSnoNodeClickHandler(int sno);
         public event OnSnoNodeClickHandler SnoNodeSelected;
@@ -23,7 +23,7 @@ namespace MPQBrowser
         {
             this.Font = new System.Drawing.Font("Courier New", 8);
             this.Dock = DockStyle.Fill;
-            this.AfterSelect += new TreeViewEventHandler(PropertyBrowser_AfterSelect);
+            this.NodeMouseClick += new TreeNodeMouseClickEventHandler(PropertyBrowser_NodeMouseClick);
             this.MouseMove += new MouseEventHandler(PropertyBrowser_MouseMove);
 
             if (element != null)
@@ -38,8 +38,6 @@ namespace MPQBrowser
                 }
             }
         }
-
-
 
         private TreeNode BasicTypeToNode(Type type, string name, string value)
         {
@@ -69,24 +67,86 @@ namespace MPQBrowser
             {
                 Type type = member is PropertyInfo ? (member as PropertyInfo).PropertyType : (member as FieldInfo).FieldType;
                 bool indexed = member is PropertyInfo ? (member as PropertyInfo).GetIndexParameters().Length > 0 : false;
-                Func<MemberInfo, object, object> getValue = (x, y) => x is PropertyInfo ? (x as PropertyInfo).GetValue(y, null) : (x as FieldInfo).GetValue(y);
-                object value = getValue(member, element);
 
 
-                if (BuiltInTypes.Contains(type) || type.IsEnum)
+                if (indexed)
                 {
-                    node.Nodes.Add(BasicTypeToNode(type, member.Name, value == null ? "" : value.ToString()));
+                    //Func<MemberInfo, object, ,object, object> getValue = (x, i, y) => x is PropertyInfo ? (x as PropertyInfo).GetValue(y, i) : (x as FieldInfo).GetValue(y);
+                    //object value = getValue(member, element);
+
+                    //try
+                    //{
+                    //    while (true)
+                    //    {
+                    //        if (BuiltInTypes.Contains(type) || type.IsEnum)
+                    //        {
+                    //            node.Nodes.Add(BasicTypeToNode(type, member.Name, value == null ? "" : value.ToString()));
+                    //        }
+                    //        else
+                    //        {
+                    //            TreeNode newNode = null;
+
+
+                    //            if (value != null)
+                    //            {
+                    //                var enumInterface = type.FindInterfaces((ty, c) => ty == typeof(IEnumerable), null);
+                    //                if (enumInterface.Length > 0)
+                    //                {
+                    //                    newNode = new TreeNode(member.Name);
+
+                    //                    foreach (object o in (IEnumerable)value)
+                    //                    {
+                    //                        if (BuiltInTypes.Contains(o.GetType()) || o.GetType().IsEnum)
+                    //                        {
+                    //                            newNode.Nodes.Add(BasicTypeToNode(o.GetType(), member.Name, o == null ? "" : o.ToString()));
+                    //                        }
+                    //                        else
+                    //                        {
+                    //                            TreeNode childNode = GetFieldsAndProperties(o);
+                    //                            childNode.Text = (o.GetType().GetMethod("ToString") != null && o.GetType().GetMethod("ToString").DeclaringType == o.GetType()) ? o.ToString() : o.GetType().Name;
+                    //                            newNode.Nodes.Add(childNode);
+                    //                        }
+                    //                    }
+                    //                }
+                    //                else
+                    //                {
+                    //                    newNode = GetFieldsAndProperties(value);
+                    //                    newNode.Text = member.Name;
+                    //                }
+                    //            }
+                    //            else
+                    //                newNode = new TreeNode(member.Name + " null");
+                    //        }
+                    //    }
+                    //} catch (Exception err)
+                    //    {
+                    //    }
+
+                    //throw new NotImplementedException("Indexed fields and properties are not supported");
                 }
+
+
+
+
+
+
+
+
                 else
                 {
-                    TreeNode newNode = null;
 
-                    if (indexed)
+                    Func<MemberInfo, object, object> getValue = (x, y) => x is PropertyInfo ? (x as PropertyInfo).GetValue(y, null) : (x as FieldInfo).GetValue(y);
+                    object value = getValue(member, element);
+
+
+                    if (BuiltInTypes.Contains(type) || type.IsEnum || member.Name == "Target")
                     {
-                        throw new NotImplementedException("Indexed fields and properties are not supported");
+                        node.Nodes.Add(BasicTypeToNode(type, member.Name, value == null ? "" : value.ToString()));
                     }
                     else
                     {
+                        TreeNode newNode = null;
+
                         if (value != null)
                         {
                             var enumInterface = type.FindInterfaces((ty, c) => ty == typeof(IEnumerable), null);
@@ -103,7 +163,7 @@ namespace MPQBrowser
                                     else
                                     {
                                         TreeNode childNode = GetFieldsAndProperties(o);
-                                        childNode.Text = type.Name;
+                                        childNode.Text = (o.GetType().GetMethod("ToString") != null && o.GetType().GetMethod("ToString").DeclaringType == o.GetType()) ? o.ToString() : o.GetType().Name;
                                         newNode.Nodes.Add(childNode);
                                     }
                                 }
@@ -118,6 +178,7 @@ namespace MPQBrowser
                             newNode = new TreeNode(member.Name + " null");
 
                         node.Nodes.Add(newNode);
+
                     }
                 }
             }
@@ -133,17 +194,12 @@ namespace MPQBrowser
                 this.Cursor = Cursors.Arrow;
         }
 
-        void PropertyBrowser_AfterSelect(object sender, TreeViewEventArgs e)
+        void PropertyBrowser_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
             if (e.Node.Tag != null)
                 if (SnoNodeSelected != null)
                     SnoNodeSelected((int)e.Node.Tag);
         }
-
-
     }
-
-
-
 
 }
